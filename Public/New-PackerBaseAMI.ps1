@@ -55,7 +55,7 @@ function New-PackerBaseAMI {
             ValueFromPipelineByPropertyName = $false)]
         [ValidateSet('WINDOWS_2008R2_BASE', 'WINDOWS_2012_BASE', 'WINDOWS_2012R2_BASE', 'WINDOWS_2016_BASE')]
         [String]
-        $BaseOS = 'WINDOWS_2012R2_BASE',
+        $BaseOS = 'WINDOWS_2016_BASE',
 
         # Do Not Encrypt the new AMI
         [Parameter(Mandatory = $false, 
@@ -140,6 +140,13 @@ function New-PackerBaseAMI {
             $encrypt_boot = "true"
         }
 
+        #Determine the appropriate UserData.xml to use, based on the selected BaseOS:
+        if ($BaseOS -match '2016') {
+            $user_data_file = "$(Split-Path (Get-Module PackerBaseAMI).Path -Parent)\Private\UserData_2016.xml"
+        } else {
+            $user_data_file = "$(Split-Path (Get-Module PackerBaseAMI).Path -Parent)\Private\UserData_2012.xml"
+        }
+
         # Build the Packer Template
         $builders = [PSCustomObject]@{
             type                  = "amazon-ebs"
@@ -152,7 +159,7 @@ function New-PackerBaseAMI {
             instance_type         = "t2.medium"
             source_ami            = $AmiToPack.ImageId
             ami_name              = $NewAMIName
-            user_data_file        = "$(Split-Path (Get-Module PackerBaseAMI).Path -Parent)\Private\UserData.xml"
+            user_data_file        = $user_data_file
         }
         $PackerTemplate = [PSCustomObject]@{
             builders = @($builders)

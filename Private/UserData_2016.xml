@@ -1,0 +1,39 @@
+<powershell> # XML Tag for EC2ConfigService
+
+# Get settings from unattend.xml
+$UnattendFile =  "$env:ProgramData\Amazon\EC2-Windows\Launch\Sysprep\Unattend.xml"
+$UnattendSet = [xml](Get-Content $UnattendFile)
+
+$change = $false
+if ($UnattendSet.unattend.settings[1].component[0].TimeZone -ne "Eastern Standard Time") {
+    $change = $True
+    $UnattendSet.unattend.settings[1].component[0].TimeZone = "Eastern Standard Time"
+}
+if ($change) {
+    $UnattendSet.Save($UnattendFile)
+}
+
+# Get settings from LaunchConfig.json
+$EC2LaunchFile = "$env:ProgramData\Amazon\EC2-Windows\Launch\Config\LaunchConfig.json"
+$EC2LaunchSet = Get-Content $EC2LaunchFile | ConvertFrom-Json
+
+#Massage settings, if necessary:
+$change = $false
+switch ($EC2LaunchSet) {
+    {$_.SetComputerName -eq $True}       {$change = $true; $EC2LaunchSet.SetComputerName = $False}
+    {$_.SetWallpaper -eq $True}          {$change = $true; $EC2LaunchSet.SetWallpaper = $False}
+    {$_.AdminPasswordType -ne 'Random'}  {$change = $true; $EC2LaunchSet.AdminPasswordType = 'Random'}
+    {$_.ExtendBootVolumeSize -eq $False} {$change = $true; $EC2LaunchSet.ExtendBootVolumeSize = $True}
+}
+
+#Export changes to file if changes have been made:
+if ($change) {
+    $EC2LaunchSet | ConvertTo-Json | Out-File -FilePath $EC2LaunchFile -Encoding utf8 -Force 
+}
+
+
+# Run Sysprep via Ec2Config.exe
+Set-Location "$env:ProgramData\Amazon\EC2-Windows\Launch\Scripts\"
+./InitializeInstance.ps1 -Schedule
+./SysprepInstance.ps1
+</powershell>
