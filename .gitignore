@@ -1,0 +1,4 @@
+# Exclude log files:
+*.log
+*.txt
+temptemplate.json
